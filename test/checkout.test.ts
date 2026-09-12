@@ -25,7 +25,7 @@ test("getSession unwraps the envelope, hits the right URL, and parses the sessio
           status: "PENDING",
           is_usable: true,
           networks: [
-            { code: "MTN_BJ", name: "MTN Bénin", otp_required: false, fee: "75.00", total: "5075.00", currency: "XOF", unavailable: false },
+            { code: "mtn_bj", name: "MTN Bénin", otp_required: false, fee: "75.00", total: "5075.00", currency: "XOF", unavailable: false },
           ],
         },
       });
@@ -37,7 +37,7 @@ test("getSession unwraps the envelope, hits the right URL, and parses the sessio
   assert.equal(calls[0], `${BASE}/checkout/abc123/`);
   assert.equal(session.merchant_name, "Boutique Test");
   assert.equal(session.networks.length, 1);
-  assert.equal(session.networks[0]!.code, "MTN_BJ");
+  assert.equal(session.networks[0]!.code, "mtn_bj");
   assert.equal(session.networks[0]!.unavailable, false);
 });
 
@@ -57,12 +57,12 @@ test("pay() sends the network/customer/otp body and NO Authorization header at a
     },
   });
 
-  const result = await checkout.pay("abc123", { network: "MTN_BJ", country: "BJ", customer: { phone: "+22900000000", first_name: "Client" } });
+  const result = await checkout.pay("abc123", { network: "mtn_bj", country: "BJ", customer: { phone: "+22900000000", first_name: "Client" } });
 
   assert.equal(result.transaction_id, "tx_1");
   assert.equal(capturedHeaders!.Authorization, undefined); // JAMAIS de clé secrète ici
   const sentBody = JSON.parse(capturedBody!);
-  assert.equal(sentBody.network, "MTN_BJ");
+  assert.equal(sentBody.network, "mtn_bj");
   assert.equal(sentBody.customer.phone, "+22900000000");
 });
 
@@ -77,7 +77,7 @@ test("maps a 410 (session no longer usable) to AlphaPaySessionGoneError", async 
   });
 
   await assert.rejects(
-    () => checkout.pay("abc123", { network: "MTN_BJ" }),
+    () => checkout.pay("abc123", { network: "mtn_bj" }),
     (err: unknown) => {
       assert.ok(err instanceof AlphaPaySessionGoneError);
       assert.equal(err.code, "paid");
@@ -97,7 +97,7 @@ test("maps a 409 double-submission to AlphaPayConflictError", async () => {
   });
 
   await assert.rejects(
-    () => checkout.pay("abc123", { network: "MTN_BJ" }),
+    () => checkout.pay("abc123", { network: "mtn_bj" }),
     (err: unknown) => {
       assert.ok(err instanceof AlphaPayConflictError);
       assert.equal(err.code, "payment_already_pending");
@@ -144,4 +144,62 @@ test("pollStatus emits intermediate PENDING results then stops at a terminal sta
   }
 
   assert.deepEqual(results, ["PENDING", "PENDING", "PAID"]);
+});
+
+test("getPaymentLink parses public options and custom fields", async () => {
+  const checkout = new AlphaPayCheckout({
+    baseUrl: BASE,
+    fetch: async () =>
+      jsonResponse({
+        success: true,
+        code: 200,
+        data: {
+          name: "Facture #42",
+          merchant_name: "Boutique Test",
+          amount_type: "FIXED",
+          amount: "5000.00",
+          currency: "XOF",
+          slug: "demo-slug",
+          is_usable: true,
+          require_phone: false,
+          google_ads_id: "AW-123456789",
+          custom_fields: [{ key: "reference_client", label: "Référence client", required: true }],
+        },
+      }),
+  });
+
+  const link = await checkout.getPaymentLink("demo-slug");
+
+  assert.equal(link.google_ads_id, "AW-123456789");
+  assert.equal(link.custom_fields?.length, 1);
+  assert.equal(link.custom_fields?.[0]!.key, "reference_client");
+  assert.equal(link.custom_fields?.[0]!.required, true);
+});
+
+test("createCheckoutFromPaymentLink sends customer/custom fields and no auth header", async () => {
+  let capturedHeaders: Record<string, string> | undefined;
+  let capturedBody: string | undefined;
+  const checkout = new AlphaPayCheckout({
+    baseUrl: BASE,
+    fetch: async (_url, init) => {
+      capturedHeaders = init!.headers as Record<string, string>;
+      capturedBody = init!.body as string;
+      return jsonResponse({
+        success: true,
+        code: 201,
+        data: { slug: "checkout-slug", checkout_url: "https://checkout.example.test/checkout-slug" },
+      });
+    },
+  });
+
+  const result = await checkout.createCheckoutFromPaymentLink("demo-slug", {
+    customer: { email: "client@example.com", first_name: "Client", last_name: "Test" },
+    custom_field_values: { reference_client: "CMD-42" },
+  });
+
+  assert.equal(result.slug, "checkout-slug");
+  assert.equal(capturedHeaders!.Authorization, undefined);
+  const sentBody = JSON.parse(capturedBody!);
+  assert.equal(sentBody.customer.email, "client@example.com");
+  assert.equal(sentBody.custom_field_values.reference_client, "CMD-42");
 });

@@ -33,7 +33,7 @@ export interface CheckoutSessionDetail {
 
 /** Un réseau payable (MTN Bénin, Orange Money CI, carte...), avec son estimation de frais pour le montant de la session. */
 export interface NetworkOption {
-  /** Code réseau à passer tel quel à `pay()` (ex. "MTN_BJ"). */
+  /** Code réseau à passer tel quel à `pay()` (ex. "mtn_bj"). */
   code: string;
   name: string;
   /**
@@ -118,4 +118,46 @@ export interface StatusResult {
 export interface OtpConfirmResult {
   transaction_id: string;
   status: string;
+}
+
+/** Un champ personnalisé collecté sur la page publique d'un lien de paiement. */
+export interface PaymentLinkCustomField {
+  key: string;
+  label: string;
+  required?: boolean;
+}
+
+/** Réponse de `GET /payment-links/public/{slug}/` — ce que voit la page publique du lien, jamais l'id interne du marchand. */
+export interface PublicPaymentLink {
+  name: string;
+  merchant_name: string;
+  description?: string | null;
+  /** "FIXED" ou "FREE" — si "FREE", `amount` doit être fourni à `createCheckoutFromPaymentLink()`. */
+  amount_type: "FIXED" | "FREE";
+  amount?: string | null;
+  min_amount?: string | null;
+  currency: string;
+  slug: string;
+  is_usable: boolean;
+  unusable_reason?: string;
+  /** true : `customer.phone` devient obligatoire dans `createCheckoutFromPaymentLink()`. */
+  require_phone?: boolean;
+  facebook_pixel_id?: string;
+  google_ads_id?: string;
+  custom_fields?: PaymentLinkCustomField[];
+}
+
+/** Corps de `POST /payment-links/public/{slug}/checkout/` — pas de pays/réseau : ça se choisit sur la CheckoutSession créée en retour. */
+export interface CreateCheckoutFromPaymentLinkParams {
+  /** Requis si le lien est à montant libre (`PublicPaymentLink.amount_type === "FREE"`) ; ignoré sinon. */
+  amount?: number | string;
+  customer: CheckoutCustomer;
+  /** Valeurs des champs définis par `PublicPaymentLink.custom_fields`, indexées par leur `key`. */
+  custom_field_values?: Record<string, string | number | boolean | null>;
+}
+
+/** Réponse de `POST /payment-links/public/{slug}/checkout/` — `slug` est celui de la nouvelle CheckoutSession one-shot créée, à passer à `getSession()`/`pay()` pour la suite du paiement. */
+export interface PublicCheckoutResult {
+  slug: string;
+  checkout_url: string;
 }

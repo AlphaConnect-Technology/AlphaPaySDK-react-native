@@ -2,10 +2,13 @@ import { AlphaPayPollTimeoutError } from "./errors.js";
 import { AlphaPayCheckoutOptions, Http } from "./http.js";
 import type {
   CheckoutSessionDetail,
+  CreateCheckoutFromPaymentLinkParams,
   NetworksResult,
   OtpConfirmResult,
   PayParams,
   PayResult,
+  PublicCheckoutResult,
+  PublicPaymentLink,
   StatusResult,
 } from "./types.js";
 
@@ -124,6 +127,26 @@ export class AlphaPayCheckout {
       }
       await sleep(interval, options.signal);
     }
+  }
+
+  /**
+   * Consultation publique d'un lien de paiement (montant, champs
+   * personnalisés à collecter, etc.) — `slug` fait office de capacité,
+   * comme pour une session de checkout. Appelez ceci pour construire le
+   * formulaire AVANT `createCheckoutFromPaymentLink`.
+   */
+  getPaymentLink(slug: string): Promise<PublicPaymentLink> {
+    return this.http.request("GET", `/payment-links/public/${slug}/`);
+  }
+
+  /**
+   * Crée une CheckoutSession one-shot à partir du lien (montant + identité
+   * client) — un lien étant réutilisable, chaque appel en crée une NOUVELLE.
+   * Ni pays ni réseau ici : ça se choisit ensuite sur la session renvoyée,
+   * pilotable avec `getSession`/`getNetworks`/`pay` via `PublicCheckoutResult.slug`.
+   */
+  createCheckoutFromPaymentLink(slug: string, params: CreateCheckoutFromPaymentLinkParams): Promise<PublicCheckoutResult> {
+    return this.http.request("POST", `/payment-links/public/${slug}/checkout/`, { body: params });
   }
 }
 

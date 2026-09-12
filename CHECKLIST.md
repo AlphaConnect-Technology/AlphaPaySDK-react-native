@@ -68,3 +68,12 @@ tests `node:test` verts, build tsup ESM+CJS+d.ts sans erreur). Reste avant
       **exécutés avec succès (6/6 verts)**.
 - [x] `npm run typecheck` (`tsc --noEmit`) : aucune erreur.
 - [x] `npm run build` (tsup) : ESM + CJS + `.d.ts`/`.d.cts` générés sans erreur.
+- [x] 2026-09-12 — synchronisé avec le SDK PHP (commit "Add public payment
+      link features") et le SDK Flutter jumeau : `getPaymentLink()`/
+      `createCheckoutFromPaymentLink()` (page publique d'un lien de paiement
+      -> CheckoutSession one-shot, `PublicPaymentLink`/`PublicCheckoutResult`/
+      `PaymentLinkCustomField`/`CreateCheckoutFromPaymentLinkParams` dans
+      `types.ts`), et corrigé la même casse de code réseau erronée que les
+      SDK PHP/Flutter (`"MTN_BJ"` -> `"mtn_bj"`, README + tests + docblock
+      `NetworkOption.code`). 2 tests ajoutés (8 au total), tous verts.
+      `typecheck`/`test`/`build` exécutés avec succès après ces changements.
