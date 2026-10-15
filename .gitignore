@@ -3,3 +3,7 @@ dist/
 dist-test/
 *.log
 .env
+
+# Documents internes, gardés en local uniquement
+EXAMPLES.md
+CHECKLIST.md

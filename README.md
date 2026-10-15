@@ -3,8 +3,7 @@
 SDK React Native / TypeScript officiel pour les sessions de checkout hébergé
 AlphaPay.
 
-> **Statut : v0.1.0, non publié.** Voir [CHECKLIST.md](./CHECKLIST.md) pour
-> ce qui manque avant une publication npm.
+> **Statut : v0.1.0, non publié.**
 
 **TypeScript pur, aucune dépendance native** — repose uniquement sur le
 `fetch`/`AbortController` global que React Native fournit nativement depuis
